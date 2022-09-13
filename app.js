@@ -2,6 +2,8 @@ const express = require('express')
 const mongoose = require('mongoose')
 const encrypt = require('mongoose-encryption')
 
+require('dotenv').config()
+
 mongoose.connect('mongodb://localhost:27017/userDB')
 
 const Schema = mongoose.Schema
@@ -12,8 +14,7 @@ const userSchema = new Schema({
     }
 )
 
-const secret = 'thisIsVerySecretTestKey'
-userSchema.plugin(encrypt, {secret, encryptedFields: ['password']})
+userSchema.plugin(encrypt, {secret: process.env.SECRET, encryptedFields: ['password']})
 
 const User = new mongoose.model('User', userSchema)
 // username=aasd%40sd.sd&password=testPassword
