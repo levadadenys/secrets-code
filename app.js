@@ -1,12 +1,19 @@
 const express = require('express')
 const mongoose = require('mongoose')
+const encrypt = require('mongoose-encryption')
 
 mongoose.connect('mongodb://localhost:27017/userDB')
 
-const userSchema = {
-    email: String,
-    password: String
-}
+const Schema = mongoose.Schema
+
+const userSchema = new Schema({
+        email: String,
+        password: String
+    }
+)
+
+const secret = 'thisIsVerySecretTestKey'
+userSchema.plugin(encrypt, {secret, encryptedFields: ['password']})
 
 const User = new mongoose.model('User', userSchema)
 // username=aasd%40sd.sd&password=testPassword
