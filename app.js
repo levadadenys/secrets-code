@@ -1,7 +1,8 @@
 const express = require('express')
 const mongoose = require('mongoose')
-const md5 = require('md5')
-const encrypt = require('mongoose-encryption')
+const bcrypt = require('bcrypt')
+
+const saltRounds = 10
 
 require('dotenv').config()
 
@@ -10,15 +11,11 @@ mongoose.connect('mongodb://localhost:27017/userDB')
 const Schema = mongoose.Schema
 
 const userSchema = new Schema({
-        email: String,
-        password: String
-    }
-)
-
-// userSchema.plugin(encrypt, {secret: process.env.SECRET, encryptedFields: ['password']})
+    email: String,
+    password: String
+})
 
 const User = new mongoose.model('User', userSchema)
-// username=aasd%40sd.sd&password=testPassword
 
 const app = express()
 const port = process.env.PORT || 3000
@@ -36,41 +33,47 @@ app.route('/login')
         res.render('login')
     })
     .post(async (req, res) => {
-        const {username} = req.body
-        const password = md5(req.body.password)
-        User.findOne({email: username}, (err, foundUser) => {
-            if (err) {
-                console.log('err')
-            } else {
-                if (foundUser) {
-                    if (foundUser.password === password) {
-                        res.render('secrets')
-                        return
-                    }
+        const {username, password} = req.body
+
+        User.findOne({email: username})
+            .then((foundUser) => {
+                if (!foundUser) {
+                    res.sendStatus(401)
+                } else {
+                    bcrypt.compare(password, foundUser.password)
+                        .then(isPasswordsEqual => {
+                            if (isPasswordsEqual == true) {
+                                res.render('secrets')
+                                return
+                            }
+                            res.sendStatus(401)
+                        })
                 }
-            }
-            res.sendStatus(401)
-        })
-
-
+            }).catch(e => res.sendStatus(401))
     })
+
 
 app.route('/register')
     .get((req, res) => {
         res.render('register')
     })
     .post(async (req, res) => {
-        try {
-            const newUser = new User({
-                email: req.body.username,
-                password: md5(req.body.password)
-            })
 
-            await newUser.save()
-            res.render('secrets')
-        } catch (e) {
-            res.send(e)
-        }
+        bcrypt.hash(req.body.password, saltRounds)
+            .then(async (hash) => {
+                try {
+                    const newUser = new User({
+                        email: req.body.username, password: hash
+                    })
+
+                    await newUser.save()
+                    res.render('secrets')
+
+                } catch (e) {
+                    res.send(e)
+                }
+            })
+            .catch(e => res.send(e))
     })
 
 app.listen(port, () => console.log(`Server is running on port: ${port}`))
